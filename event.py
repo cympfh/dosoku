@@ -1,3 +1,5 @@
+import html
+import subprocess
 import click
 import requests
 import json
@@ -8,12 +10,31 @@ import tornado.web
 CONFIG = json.load(open('config.json'))['memo']
 
 
-def memo(data):
+def tw(msg):
+    username = CONFIG['twitter']['username']
+    subprocess.call(["tw-cd", username])
+    print(["tw", msg])
+    subprocess.call(["tw", msg])
+    click.secho('TW ', fg='red', nl=False)
+    print(username, msg)
+
+
+def ik(data):
     url = CONFIG['url']
     headers = {'X-KEY': CONFIG['key']}
-    requests.post(url, data=data, headers=headers)
+    requests.post(url, data=data.encode('UTF-8'), headers=headers)
     click.secho('POST ', fg='red', nl=False)
     print(url, data, headers)
+
+
+def memo(data):
+    """Entry point
+    """
+    click.secho('MEMO ', fg='green', nl=False)
+    msg = html.unescape(data)
+    print(msg)
+    ik(msg)
+    tw(msg)
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -21,8 +42,6 @@ class MainHandler(tornado.web.RequestHandler):
     def post(self):
 
         data = json.loads(self.request.body.decode('UTF-8'))
-        click.secho('CHUNKED DATA ', fg='yellow', nl=False)
-        print(data)
 
         if data['type'] == 'url_verification':
             self.write(data['challenge'])
@@ -31,17 +50,13 @@ class MainHandler(tornado.web.RequestHandler):
         if data['type'] == 'event_callback':
 
             event = data['event']
-            click.secho('EVENT ', fg='green', nl=False)
-            print(event)
 
             if event['type'] == 'message':
 
                 if 'bot_id' in event or 'text' not in event:
-                    click.secho('BOT ', fg='red')
-                    self.write('BOT')
                     return
 
-                memo(event['text'].encode('UTF-8'))
+                memo(event['text'])
                 self.write('OK')
 
             else:
