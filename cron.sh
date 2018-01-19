@@ -35,13 +35,22 @@ post-tenki() {
 }
 
 post-anime() {
-    post animetick tv "#44aa88" "$(animetick)"
+    post animetick tv "#44aa88" "$(animetick -D)"
+}
+
+work() {
+    post-tenki
+    post-anime
 }
 
 while :; do
-    atq 10:30 echo "ITS TIME" && (
-        post-tenki
-        post-anime
-    )
-    sleep 2h
+    atq 8:00 echo && work
+    atq 10:00 echo && work
+    atq 12:00 echo && work
+    atq 14:00 echo && work
+    atq 16:00 echo && work
+    atq 18:00 echo && work
+    atq 20:00 echo && work
+    atq 22:00 echo && work
+    sleep 3h
 done
