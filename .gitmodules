@@ -4,3 +4,6 @@
 [submodule "twitter2slack"]
 	path = twitter2slack
 	url = git@github.com:cympfh/twitter2slack
+[submodule "ichigo-slack"]
+	path = ichigo-slack
+	url = git@github.com:cympfh/ichigo-slack.git
