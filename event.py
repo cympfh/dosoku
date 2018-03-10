@@ -5,6 +5,7 @@ import requests
 import json
 import tornado.ioloop
 import tornado.web
+import tornado.options
 
 
 CONFIG = json.load(open('config.json'))['memo']
@@ -13,6 +14,7 @@ CONFIG = json.load(open('config.json'))['memo']
 def tw(msg):
     username = CONFIG['twitter']['username']
     subprocess.call(["tw-cd", username])
+    msg = msg if msg[0] == ':' else f".{msg}"
     print(["tw", msg])
     subprocess.call(["tw", msg])
     click.secho('TW ', fg='red', nl=False)
@@ -74,6 +76,8 @@ def make_app():
     ])
 
 if __name__ == "__main__":
+    tornado.options.parse_command_line()
     app = make_app()
     app.listen(1234)
+    print('ready on 1234')
     tornado.ioloop.IOLoop.current().start()
