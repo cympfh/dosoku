@@ -1,14 +1,21 @@
 import html
+import json
+import re
 import subprocess
+
 import click
 import requests
-import json
 import tornado.ioloop
-import tornado.web
 import tornado.options
-
+import tornado.web
 
 CONFIG = json.load(open('config.json'))['memo']
+
+
+def normalize(text):
+    text = re.sub(r'<(http[^|]*)\|[^>]+>', r'\1', text)
+    text = re.sub(r'<(http[^>]*)>', r'\1', text)
+    return text
 
 
 def tw(msg):
@@ -58,7 +65,7 @@ class MainHandler(tornado.web.RequestHandler):
                 if 'bot_id' in event or 'text' not in event:
                     return
 
-                memo(event['text'])
+                memo(normalize(event['text']))
                 self.write('OK')
 
             else:
