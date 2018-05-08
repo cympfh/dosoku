@@ -20,10 +20,8 @@ def normalize(text):
 
 def tw(msg):
     username = CONFIG['twitter']['username']
-    subprocess.call(["tw-cd", username])
-    msg = msg if msg[0] == ':' else f".{msg}"
     print(["tw", msg])
-    subprocess.call(["tw", msg])
+    subprocess.call(["tw", msg, '--by', username])
     click.secho('TW ', fg='red', nl=False)
     print(username, msg)
 
