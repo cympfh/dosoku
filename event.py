@@ -18,20 +18,20 @@ def normalize(text):
     return text
 
 
-def tw(msg):
-    username = CONFIG['twitter']['username']
-    print(["tw", msg])
-    subprocess.call(["tw", msg, '--by', username])
-    click.secho('TW ', fg='red', nl=False)
-    print(username, msg)
+# def tw(msg):
+#     username = CONFIG['twitter']['username']
+#     print(["tw", msg])
+#     subprocess.call(["tw", msg, '--by', username])
+#     click.secho('TW ', fg='red', nl=False)
+#     print(username, msg)
 
 
-def ik(data):
+def ik(msg):
     url = CONFIG['url']
     headers = {'X-KEY': CONFIG['key']}
-    requests.post(url, data=data.encode('UTF-8'), headers=headers)
+    requests.post(url, data=msg.encode('UTF-8'), headers=headers)
     click.secho('POST ', fg='red', nl=False)
-    print(url, data, headers)
+    print(url, msg, headers)
 
 
 def memo(data):
@@ -41,7 +41,6 @@ def memo(data):
     msg = html.unescape(data)
     print(msg)
     ik(msg)
-    tw(msg)
 
 
 class MainHandler(tornado.web.RequestHandler):
