@@ -18,6 +18,26 @@ def normalize(text):
     return text
 
 
+class History:
+
+    items = []
+    items_set = set()
+    hist_size = 100
+
+    @classmethod
+    def contains(cls, item):
+        return item in cls.items_set
+
+    @classmethod
+    def add(cls, item):
+        cls.items.append(item)
+        cls.items_set.add(item)
+        if len(cls.items) > cls.hist_size:
+            remove_item = cls.items[0]
+            cls.items_set.remove(remove_item)
+            cls.items = cls.items[1:]
+
+
 class Report:
 
     @classmethod
@@ -75,8 +95,15 @@ class MainHandler(tornado.web.RequestHandler):
                     self.finish("You are bot")
                     return
 
+                data = normalize(event['text'])
+                if History.contains(data):
+                    print(f"Duplicate: {data}")
+                    self.finish("Duplicate Data")
+                    return
+
                 print(f"Report: {data}")
-                Report(normalize(event['text']))
+                History.add(data)
+                Report(data)
                 self.write('OK')
 
             else:
