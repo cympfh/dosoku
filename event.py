@@ -18,29 +18,40 @@ def normalize(text):
     return text
 
 
-# def tw(msg):
-#     username = CONFIG['twitter']['username']
-#     print(["tw", msg])
-#     subprocess.call(["tw", msg, '--by', username])
-#     click.secho('TW ', fg='red', nl=False)
-#     print(username, msg)
+class Report:
 
+    @classmethod
+    def tw(cls, msg):
+        username = CONFIG['twitter']['username']
+        click.secho('TW ', fg='red', nl=False)
+        click.secho(msg)
+        subprocess.call(["tw", msg, '--by', username])
+        click.secho('')
 
-def ik(msg):
-    url = CONFIG['url']
-    headers = {'X-KEY': CONFIG['key']}
-    requests.post(url, data=msg.encode('UTF-8'), headers=headers)
-    click.secho('POST ', fg='red', nl=False)
-    print(url, msg, headers)
+    @classmethod
+    def ik(cls, msg):
+        url = CONFIG['url']
+        headers = {'X-KEY': CONFIG['key']}
+        click.secho('POST ', fg='red', nl=False)
+        click.secho(msg)
+        requests.post(url, data=msg.encode('UTF-8'), headers=headers)
+        click.secho('')
 
+    @classmethod
+    def mast(cls, msg):
+        click.secho('mast ', fg='red', nl=False)
+        click.secho(msg)
+        subprocess.call(["mast", "toot", msg])
+        click.secho('')
 
-def memo(data):
-    """Entry point
-    """
-    click.secho('MEMO ', fg='green', nl=False)
-    msg = html.unescape(data)
-    print(msg)
-    ik(msg)
+    def __init__(self, data):
+        msg = html.unescape(data)
+        if msg[0] == '!' or msg[0] == '！':
+            msg = msg[1:]
+            Report.ik(msg)
+        else:
+            Report.tw(msg)
+            Report.mast(msg)
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -60,9 +71,12 @@ class MainHandler(tornado.web.RequestHandler):
             if event['type'] == 'message':
 
                 if 'bot_id' in event or 'text' not in event:
+                    print("message from bot")
+                    self.finish("You are bot")
                     return
 
-                memo(normalize(event['text']))
+                print(f"Report: {data}")
+                Report(normalize(event['text']))
                 self.write('OK')
 
             else:
