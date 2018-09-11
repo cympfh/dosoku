@@ -66,11 +66,14 @@ class Report:
 
     def __init__(self, data):
         msg = html.unescape(data)
-        if msg[0] == '!' or msg[0] == '！':
+        if msg[0:2] == '!!' or msg[0:2] == '！！':
+            msg = msg[2:]
+            Report.ik(msg)
+        elif msg[0] == '!' or msg[0] == '！':
             msg = msg[1:]
             Report.ik(msg)
+            Report.mast(msg)
         else:
-            Report.tw(msg)
             Report.mast(msg)
 
 
