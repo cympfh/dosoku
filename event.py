@@ -8,6 +8,7 @@ import requests
 import tornado.ioloop
 import tornado.options
 import tornado.web
+import tornado.httpserver
 
 CONFIG = json.load(open('config.json'))['memo']
 
@@ -126,6 +127,9 @@ def make_app():
 if __name__ == "__main__":
     tornado.options.parse_command_line()
     app = make_app()
-    app.listen(1234)
+
+    server = tornado.httpserver.HTTPServer(app)
+    server.bind(1234)
+    server.start(2)
     print('ready on 1234')
     tornado.ioloop.IOLoop.current().start()
