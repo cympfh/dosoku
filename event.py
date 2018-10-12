@@ -10,7 +10,7 @@ import tornado.options
 import tornado.web
 import tornado.httpserver
 
-CONFIG = json.load(open('config.json'))['memo']
+CONFIG = json.load(open('config.json'))
 
 
 def normalize(text):
@@ -39,20 +39,24 @@ class History:
             cls.items = cls.items[1:]
 
 
+class Slack:
+
+    @classmethod
+    def delete(cls, channel, ts):
+        print('delete', channel, ts)
+        token = CONFIG['slack']['token']
+        print('delete', token)
+        a = requests.post('https://slack.com/api/chat.delete', data={
+            'token': token, 'channel': channel, 'ts': ts, 'as_user': 'true'})
+        print(a)
+
+
 class Report:
 
     @classmethod
-    def tw(cls, msg):
-        username = CONFIG['twitter']['username']
-        click.secho('TW ', fg='red', nl=False)
-        click.secho(msg)
-        subprocess.call(["tw", msg, '--by', username])
-        click.secho('')
-
-    @classmethod
     def ik(cls, msg):
-        url = CONFIG['url']
-        headers = {'X-KEY': CONFIG['key']}
+        url = CONFIG['memo']['url']
+        headers = {'X-KEY': CONFIG['memo']['key']}
         click.secho('POST ', fg='red', nl=False)
         click.secho(msg)
         requests.post(url, data=msg.encode('UTF-8'), headers=headers)
@@ -65,7 +69,7 @@ class Report:
         subprocess.call(["mast", "toot", msg])
         click.secho('')
 
-    def __init__(self, data):
+    def __init__(self, data, channel, ts):
         msg = html.unescape(data)
         if msg[0:2] == '!!' or msg[0:2] == '！！':
             msg = msg[2:]
@@ -74,8 +78,10 @@ class Report:
             msg = msg[1:]
             Report.ik(msg)
             Report.mast(msg)
+            Slack.delete(channel, ts)
         else:
             Report.mast(msg)
+            Slack.delete(channel, ts)
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -91,6 +97,7 @@ class MainHandler(tornado.web.RequestHandler):
         if data['type'] == 'event_callback':
 
             event = data['event']
+            print(f"Event: {event}")
 
             if event['type'] == 'message':
 
@@ -100,6 +107,9 @@ class MainHandler(tornado.web.RequestHandler):
                     return
 
                 data = normalize(event['text'])
+                channel = event['channel']
+                ts = event['event_ts']
+
                 if History.contains(data):
                     print(f"Duplicate: {data}")
                     self.finish("Duplicate Data")
@@ -107,7 +117,7 @@ class MainHandler(tornado.web.RequestHandler):
 
                 print(f"Report: {data}")
                 History.add(data)
-                Report(data)
+                Report(data, channel, ts)
                 self.write('OK')
 
             else:
