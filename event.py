@@ -63,25 +63,31 @@ class Report:
         click.secho('')
 
     @classmethod
-    def mast(cls, msg):
+    def mast(cls, msg, unlisted=False):
         click.secho('mast ', fg='red', nl=False)
         click.secho(msg)
-        subprocess.call(["mast", "toot", msg])
+        if unlisted:
+            subprocess.call(["mast", "toot", "--unlisted", msg])
+        else:
+            subprocess.call(["mast", "toot", msg])
+        click.secho('')
+
+    @classmethod
+    def tw(cls, msg):
+        click.secho('tw ', fg='red', nl=False)
+        click.secho(msg)
+        username = CONFIG['twitter']['username']
+        subprocess.call(["tw", "--by", username, msg])
         click.secho('')
 
     def __init__(self, data, channel, ts):
         msg = html.unescape(data)
-        if msg[0:2] == '!!' or msg[0:2] == '！！':
-            msg = msg[2:]
-            Report.ik(msg)
-        elif msg[0] == '!' or msg[0] == '！':
+        if msg[0] == '!' or msg[0] == '！':
             msg = msg[1:]
             Report.ik(msg)
-            Report.mast(msg)
-            Slack.delete(channel, ts)
-        else:
-            Report.mast(msg)
-            Slack.delete(channel, ts)
+        Report.mast(msg)
+        Report.tw(msg)
+        Slack.delete(channel, ts)
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -113,12 +119,11 @@ class MainHandler(tornado.web.RequestHandler):
                 if History.contains(data):
                     print(f"Duplicate: {data}")
                     self.finish("Duplicate Data")
-                    return
-
-                print(f"Report: {data}")
-                History.add(data)
-                Report(data, channel, ts)
-                self.write('OK')
+                else:
+                    print(f"Report: {data}")
+                    History.add(data)
+                    Report(data, channel, ts)
+                    self.finish('OK')
 
             else:
                 self.write('?')
@@ -140,6 +145,6 @@ if __name__ == "__main__":
 
     server = tornado.httpserver.HTTPServer(app)
     server.bind(1234)
-    server.start(2)
+    server.start(1)
     print('ready on 1234')
     tornado.ioloop.IOLoop.current().start()
