@@ -45,48 +45,66 @@ class Slack:
     def delete(cls, channel, ts):
         print('delete', channel, ts)
         token = CONFIG['slack']['token']
-        print('delete', token)
         a = requests.post('https://slack.com/api/chat.delete', data={
             'token': token, 'channel': channel, 'ts': ts, 'as_user': 'true'})
         print(a)
 
 
+    @classmethod
+    def fetch_image(cls, url, out):
+        print('fetch', url, out)
+        token = CONFIG['slack']['token']
+        commands = ['wget', '--header', f"Authorization: Bearer {token}", url, '-O', out]
+        subprocess.call(commands)
+
+
 class Report:
 
     @classmethod
-    def ik(cls, msg):
+    def ik(cls, text):
         url = CONFIG['memo']['url']
         headers = {'X-KEY': CONFIG['memo']['key']}
         click.secho('POST ', fg='red', nl=False)
-        click.secho(msg)
-        requests.post(url, data=msg.encode('UTF-8'), headers=headers)
+        click.secho(text)
+        requests.post(url, data=text.encode('UTF-8'), headers=headers)
         click.secho('')
 
     @classmethod
-    def mast(cls, msg, unlisted=False):
-        click.secho('mast ', fg='red', nl=False)
-        click.secho(msg)
+    def mast(cls, text, unlisted=False, images=[]):
+
+        commands = ['mast', 'toot']
         if unlisted:
-            subprocess.call(["mast", "toot", "--unlisted", msg])
-        else:
-            subprocess.call(["mast", "toot", msg])
+            commands.append('--unlisted')
+        for img in images:
+            commands.append('-f')
+            commands.append(img)
+        commands.append(text)
+
+        click.secho(' '.join(commands), fg='red')
+        subprocess.call(commands)
         click.secho('')
 
     @classmethod
-    def tw(cls, msg):
-        click.secho('tw ', fg='red', nl=False)
-        click.secho(msg)
+    def tw(cls, text, images=[]):
+
         username = CONFIG['twitter']['username']
-        subprocess.call(["tw", "--by", username, msg])
+        commands = ["tw", "--by", username, text]
+        for img in images:
+            commands.append('-f')
+            commands.append(img)
+
+        click.secho(' '.join(commands), fg='green')
+        subprocess.call(commands)
         click.secho('')
 
-    def __init__(self, data, channel, ts):
-        msg = html.unescape(data)
-        if msg[0] == '!' or msg[0] == '！':
-            msg = msg[1:]
-            Report.ik(msg)
-        Report.mast(msg)
-        Report.tw(msg)
+    def __init__(self, text, channel, ts, images=[]):
+        if len(text) > 0 and (text[0] == '!' or text[0] == '！'):
+            text = text[1:]
+            Report.ik(text)
+        if len(text) == 0:
+            text = '.'
+        Report.mast(text, images=images)
+        Report.tw(text, images=images)
         Slack.delete(channel, ts)
 
 
@@ -112,17 +130,24 @@ class MainHandler(tornado.web.RequestHandler):
                     self.finish("You are bot")
                     return
 
-                data = normalize(event['text'])
+                text = normalize(event['text'])
+                text = html.unescape(text)
                 channel = event['channel']
                 ts = event['event_ts']
+                image_urls = [file['url_private'] for file in event['files']] if 'files' in event else []
 
-                if History.contains(data):
-                    print(f"Duplicate: {data}")
+                key = f"{text} {image_urls}"
+                if History.contains(key):
+                    print(f"Duplicate: {key}")
                     self.finish("Duplicate Data")
                 else:
-                    print(f"Report: {data}")
-                    History.add(data)
-                    Report(data, channel, ts)
+                    print(f"Report: {text} {image_urls}")
+                    History.add(key)
+                    images = []
+                    for i, url in enumerate(image_urls):
+                        images.append(f"/tmp/slack_image_{i}")
+                        Slack.fetch_image(url, images[-1])
+                    Report(text, channel, ts, images=images)
                     self.finish('OK')
 
             else:
