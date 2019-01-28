@@ -1,9 +1,12 @@
 [submodule "arxiv-twitter2slack"]
 	path = arxiv-twitter2slack
 	url = git@github.com:cympfh/arxiv-twitter2slack
-[submodule "twitter2slack"]
-	path = twitter2slack
-	url = git@github.com:cympfh/twitter2slack
 [submodule "ichigo-slack"]
 	path = ichigo-slack
 	url = git@github.com:cympfh/ichigo-slack.git
+[submodule "twitter-broadcast"]
+	path = twitter-broadcast
+	url = git@github.com:cympfh/twitter-broadcast.git
+[submodule "t2s"]
+	path = twitter2slack
+	url = git@github.com:cympfh/twitter2slack.git
