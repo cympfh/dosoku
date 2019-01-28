@@ -2,6 +2,7 @@ import html
 import json
 import re
 import subprocess
+from typing import Tuple
 
 import click
 import requests
@@ -17,6 +18,92 @@ def normalize(text):
     text = re.sub(r'<(http[^|]*)\|[^>]+>', r'\1', text)
     text = re.sub(r'<(http[^>]*)>', r'\1', text)
     return text
+
+
+class PostServices:
+
+    def __init__(self, ik=False, tw=False, mast=True):
+        self.ik = ik
+        self.tw = tw
+        self.mast = mast
+
+
+    def __repr__(self):
+        return f"PostServices(ik={self.ik}, tw={self.tw}, mast={self.mast})"
+
+
+def parse(text: str, services: PostServices) -> Tuple[str, PostServices]:
+    while True:
+        if text.startswith(' '):
+            text = text[1:]
+            continue
+        if text.startswith('+t'):
+            text = text[2:]
+            services.tw = True
+            continue
+        if text.startswith('-t'):
+            text = text[2:]
+            services.tw = False
+            continue
+        if text.startswith('=t'):
+            text = text[2:]
+            services = PostServices(ik=False, tw=True, mast=False)
+            continue
+        if text.startswith('+i'):
+            text = text[2:]
+            services.ik = True
+            continue
+        if text.startswith('-i'):
+            text = text[2:]
+            services.ik = True
+            continue
+        if text.startswith('=i'):
+            text = text[2:]
+            services = PostServices(ik=True, tw=False, mast=False)
+            continue
+        if text.startswith('+m'):
+            text = text[2:]
+            services.mast = True
+            continue
+        if text.startswith('-m'):
+            text = text[2:]
+            services.mast = False
+            continue
+        if text.startswith('=m'):
+            text = text[2:]
+            services = PostServices(ik=False, tw=False, mast=True)
+            continue
+        break
+    if text == '':
+        text = '.'
+    return text, services
+
+
+def test_parse():
+    assert parse('    hoge', PostServices())[0] == 'hoge'
+
+    text, services = parse(' -m hoge', PostServices())
+    assert text == 'hoge'
+    assert services.mast == False
+
+    text, services = parse('+t', PostServices())
+    assert text == '.'
+    assert services.tw == True
+
+    text, services = parse('-m +i -t hoge', PostServices(mast=False, tw=True, ik=False))
+    assert text == 'hoge'
+    assert services.mast == False
+    assert services.ik == True
+    assert services.tw == False
+
+    text, services = parse('-m -i =t hoge', PostServices(mast=True, tw=False, ik=True))
+    assert text == 'hoge'
+    assert services.mast == False
+    assert services.ik == False
+    assert services.tw == True
+
+
+test_parse()
 
 
 class History:
@@ -64,7 +151,7 @@ class Report:
     def ik(cls, text):
         url = CONFIG['memo']['url']
         headers = {'X-KEY': CONFIG['memo']['key']}
-        click.secho('POST ', fg='red', nl=False)
+        click.secho('POST ', fg='green', nl=False)
         click.secho(text)
         requests.post(url, data=text.encode('UTF-8'), headers=headers)
         click.secho('')
@@ -80,7 +167,7 @@ class Report:
             commands.append(img)
         commands.append(text)
 
-        click.secho(' '.join(commands), fg='red')
+        click.secho(' '.join(commands), fg='green')
         subprocess.call(commands)
         click.secho('')
 
@@ -98,13 +185,14 @@ class Report:
         click.secho('')
 
     def __init__(self, text, channel, ts, images=[]):
-        if len(text) > 0 and (text[0] == '!' or text[0] == '！'):
-            text = text[1:]
+        text, services = parse(text, PostServices())
+        click.secho(f'Request({text}, {services})', fg='yellow')
+        if services.ik:
             Report.ik(text)
-        if len(text) == 0:
-            text = '.'
-        Report.mast(text, images=images)
-        Report.tw(text, images=images)
+        if services.tw:
+            Report.tw(text, images=images)
+        if services.mast:
+            Report.mast(text, images=images)
         Slack.delete(channel, ts)
 
 
@@ -121,12 +209,12 @@ class MainHandler(tornado.web.RequestHandler):
         if data['type'] == 'event_callback':
 
             event = data['event']
-            print(f"Event: {event}")
+            click.secho(f"Event: {event}", fg='yellow')
 
             if event['type'] == 'message':
 
                 if 'bot_id' in event or 'text' not in event:
-                    print("message from bot")
+                    click.secho("message from bot", fg='red')
                     self.finish("You are bot")
                     return
 
@@ -138,10 +226,10 @@ class MainHandler(tornado.web.RequestHandler):
 
                 key = f"{text} {image_urls}"
                 if History.contains(key):
-                    print(f"Duplicate: {key}")
+                    click.secho(f"Duplicate: {key}", fg='red')
                     self.finish("Duplicate Data")
                 else:
-                    print(f"Report: {text} {image_urls}")
+                    click.secho(f"Report: {text} {image_urls}", fg='yellow')
                     History.add(key)
                     images = []
                     for i, url in enumerate(image_urls):
