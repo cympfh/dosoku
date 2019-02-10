@@ -208,6 +208,8 @@ class MainHandler(tornado.web.RequestHandler):
 
         if data['type'] == 'event_callback':
 
+            self.finish('Accepted')
+
             event = data['event']
             click.secho(f"Event: {event}", fg='yellow')
 
@@ -215,7 +217,6 @@ class MainHandler(tornado.web.RequestHandler):
 
                 if 'bot_id' in event or 'text' not in event:
                     click.secho("message from bot", fg='red')
-                    self.finish("You are bot")
                     return
 
                 text = normalize(event['text'])
@@ -227,7 +228,6 @@ class MainHandler(tornado.web.RequestHandler):
                 key = f"{text} {image_urls}"
                 if History.contains(key):
                     click.secho(f"Duplicate: {key}", fg='red')
-                    self.finish("Duplicate Data")
                 else:
                     click.secho(f"Report: {text} {image_urls}", fg='yellow')
                     History.add(key)
@@ -236,13 +236,6 @@ class MainHandler(tornado.web.RequestHandler):
                         images.append(f"/tmp/slack_image_{i}")
                         Slack.fetch_image(url, images[-1])
                     Report(text, channel, ts, images=images)
-                    self.finish('OK')
-
-            else:
-                self.write('?')
-
-        else:
-            self.write('?')
 
     def get(self):
         self.write("Hello, world")
