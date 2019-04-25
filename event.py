@@ -185,7 +185,7 @@ class Report:
         click.secho('')
 
     def __init__(self, text, channel, ts, images=[]):
-        text, services = parse(text, PostServices())
+        text, services = parse(text, PostServices(tw=False, ik=False, mast=False))
         click.secho(f'Request({text}, {services})', fg='yellow')
         if services.ik:
             Report.ik(text)
