@@ -22,14 +22,15 @@ def normalize(text):
 
 class PostServices:
 
-    def __init__(self, ik=False, tw=False, mast=True):
+    def __init__(self, ik=False, tw=False, mast=False, eth=False):
         self.ik = ik
         self.tw = tw
         self.mast = mast
+        self.eth = eth
 
 
     def __repr__(self):
-        return f"PostServices(ik={self.ik}, tw={self.tw}, mast={self.mast})"
+        return f"PostServices(ik={self.ik}, tw={self.tw}, mast={self.mast}, eth={self.eth})"
 
 
 def parse(text: str, services: PostServices) -> Tuple[str, PostServices]:
@@ -47,7 +48,7 @@ def parse(text: str, services: PostServices) -> Tuple[str, PostServices]:
             continue
         if text.startswith('=t'):
             text = text[2:]
-            services = PostServices(ik=False, tw=True, mast=False)
+            services = PostServices(tw=True)
             continue
         if text.startswith('+i'):
             text = text[2:]
@@ -59,7 +60,7 @@ def parse(text: str, services: PostServices) -> Tuple[str, PostServices]:
             continue
         if text.startswith('=i'):
             text = text[2:]
-            services = PostServices(ik=True, tw=False, mast=False)
+            services = PostServices(ik=True)
             continue
         if text.startswith('+m'):
             text = text[2:]
@@ -71,7 +72,19 @@ def parse(text: str, services: PostServices) -> Tuple[str, PostServices]:
             continue
         if text.startswith('=m'):
             text = text[2:]
-            services = PostServices(ik=False, tw=False, mast=True)
+            services = PostServices(mast=True)
+            continue
+        if text.startswith('+e'):
+            text = text[2:]
+            services.eth = True
+            continue
+        if text.startswith('-e'):
+            text = text[2:]
+            services.eth = False
+            continue
+        if text.startswith('=e'):
+            text = text[2:]
+            services = PostServices(eth=True)
             continue
         break
     if text == '':
@@ -95,12 +108,14 @@ def test_parse():
     assert services.mast == False
     assert services.ik == True
     assert services.tw == False
+    assert services.eth == False
 
-    text, services = parse('-m -i =t hoge', PostServices(mast=True, tw=False, ik=True))
+    text, services = parse('+e -m -i =t hoge', PostServices(mast=True, tw=False, ik=True))
     assert text == 'hoge'
     assert services.mast == False
     assert services.ik == False
     assert services.tw == True
+    assert services.eth == False
 
 
 test_parse()
@@ -184,8 +199,15 @@ class Report:
         subprocess.call(commands)
         click.secho('')
 
+    @classmethod
+    def eth(cls, text, images=[]):
+        commands = ['ethsend', text]
+        click.secho(' '.join(commands), fg='green')
+        subprocess.call(commands)
+        click.secho('')
+
     def __init__(self, text, channel, ts, images=[]):
-        text, services = parse(text, PostServices(tw=False, ik=False, mast=False))
+        text, services = parse(text, PostServices(tw=True))
         click.secho(f'Request({text}, {services})', fg='yellow')
         if services.ik:
             Report.ik(text)
@@ -193,6 +215,8 @@ class Report:
             Report.tw(text, images=images)
         if services.mast:
             Report.mast(text, images=images)
+        if services.eth:
+            Report.eth(text, images=images)
         Slack.delete(channel, ts)
 
 
